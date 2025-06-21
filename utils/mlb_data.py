@@ -1,41 +1,37 @@
-# utils/mlb_data.py
-
 import requests
-from bs4 import BeautifulSoup
-import re
+from datetime import date
 
 def fetch_today_games():
-    schedule_url = "https://www.espn.com/mlb/schedule"
-    resp = requests.get(schedule_url)
-    soup = BeautifulSoup(resp.text, "html.parser")
+    today = date.today().strftime("%Y%m%d")
+    url = f"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates={today}"
+    resp = requests.get(url)
+    data = resp.json()
 
     games = []
-    # New layout: every <article> represents a game
-    for game_card in soup.select("article"):
-        teams = game_card.select_one("span.logo-nw") and game_card.find_all("span", class_="sb-team-short")
-        pitcher_info = game_card.select_one("div:has(strong)")
+    for evt in data.get("events", []):
+        comp = evt["competitions"][0]
+        teams = comp["competitors"]
 
-        if not teams or len(teams) != 2:
-            continue
+        away = next(t for t in teams if t["homeAway"] == "away")
+        home = next(t for t in teams if t["homeAway"] == "home")
 
-        away_team = teams[0].text.strip()
-        home_team = teams[1].text.strip()
-        matchup = f"{away_team} @ {home_team}"
+        matchup = f"{away['team']['displayName']} @ {home['team']['displayName']}"
 
-        era, whip = 4.00, 1.30
-        if pitcher_info:
-            text = pitcher_info.get_text()
-            era_match = re.search(r"ERA\s?(\d+\.\d+)", text)
-            whip_match = re.search(r"WHIP\s?(\d+\.\d+)", text)
-            if era_match: era = float(era_match.group(1))
-            if whip_match: whip = float(whip_match.group(1))
+        # Probable pitchers
+        away_pitcher = away.get("probablePitcher", {}).get("fullName")
+        home_pitcher = home.get("probablePitcher", {}).get("fullName")
+
+        # Stats from JSON if available (some levels include average ERA/WHIP), otherwise placeholders
+        era = away.get("probablePitcherStats", {}).get("era", 4.00)
+        whip = away.get("probablePitcherStats", {}).get("whip", 1.30)
 
         games.append({
             "Game": matchup,
-            "Pitcher ERA": era,
-            "Pitcher WHIP": whip,
+            "Pitcher ERA": float(era),
+            "Pitcher WHIP": float(whip),
             "Team 2nd-Inning Run Rate": 0.38,
             "Opponent 2nd-Inning Allowed Rate": 0.39
         })
 
     return games
+
