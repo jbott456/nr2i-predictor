@@ -5,41 +5,37 @@ from bs4 import BeautifulSoup
 import re
 
 def fetch_today_games():
-    url = "https://www.espn.com/mlb/schedule"
-    resp = requests.get(url)
+    schedule_url = "https://www.espn.com/mlb/schedule"
+    resp = requests.get(schedule_url)
     soup = BeautifulSoup(resp.text, "html.parser")
 
     games = []
+    # New layout: every <article> represents a game
+    for game_card in soup.select("article"):
+        teams = game_card.select_one("span.logo-nw") and game_card.find_all("span", class_="sb-team-short")
+        pitcher_info = game_card.select_one("div:has(strong)")
 
-    for section in soup.find_all("section", class_="Card"):
-        table = section.find("table")
-        if not table:
+        if not teams or len(teams) != 2:
             continue
 
-        for row in table.select("tbody tr"):
-            cols = row.find_all("td")
-            if len(cols) < 2:
-                continue
+        away_team = teams[0].text.strip()
+        home_team = teams[1].text.strip()
+        matchup = f"{away_team} @ {home_team}"
 
-            teams_text = cols[0].get_text(separator="|").split("|")
-            if len(teams_text) != 2:
-                continue
+        era, whip = 4.00, 1.30
+        if pitcher_info:
+            text = pitcher_info.get_text()
+            era_match = re.search(r"ERA\s?(\d+\.\d+)", text)
+            whip_match = re.search(r"WHIP\s?(\d+\.\d+)", text)
+            if era_match: era = float(era_match.group(1))
+            if whip_match: whip = float(whip_match.group(1))
 
-            away_team = teams_text[0].strip()
-            home_team = teams_text[1].strip()
-            matchup = f"{away_team} @ {home_team}"
-
-            # Try to get starting pitchers and ERA from col[1]
-            pitcher_info = cols[1].get_text().strip()
-            era_match = re.findall(r'\d+\.\d+', pitcher_info)
-            pitcher_era = float(era_match[0]) if era_match else 4.00  # fallback
-
-            games.append({
-                "Game": matchup,
-                "Pitcher ERA": pitcher_era,
-                "Pitcher WHIP": 1.30,  # Placeholder WHIP
-                "Team 2nd-Inning Run Rate": 0.35,  # Placeholder
-                "Opponent 2nd-Inning Allowed Rate": 0.35  # Placeholder
-            })
+        games.append({
+            "Game": matchup,
+            "Pitcher ERA": era,
+            "Pitcher WHIP": whip,
+            "Team 2nd-Inning Run Rate": 0.38,
+            "Opponent 2nd-Inning Allowed Rate": 0.39
+        })
 
     return games
