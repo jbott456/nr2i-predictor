@@ -1,47 +1,51 @@
-import requests
-import re
+# app.py
 
-def fetch_today_games():
-    url = "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
-    resp = requests.get(url)
-    games_json = resp.json()
+import streamlit as st
+import pandas as pd
+from model import calculate_nr2i_score
+from utils.mlb_data import fetch_today_games
 
-    matchups = []
+st.set_page_config(page_title="NR2I Predictor", layout="wide")
+st.title("⚾ NR2I Predictor")
+st.write("This app predicts MLB games where no runs will be scored in the **2nd inning** based on pitching and scoring data.")
 
-    for event in games_json.get("events", []):
-        try:
-            competition = event["competitions"][0]
-            teams = competition["competitors"]
+st.subheader("📅 Today's Top NR2I Picks")
 
-            home = next(t for t in teams if t["homeAway"] == "home")["team"]["displayName"]
-            away = next(t for t in teams if t["homeAway"] == "away")["team"]["displayName"]
-            game_title = f"{away} @ {home}"
+try:
+    # Pull today's matchups and data
+    games_data = fetch_today_games()
 
-            # Default values in case no pitcher data found
-            era, whip = 4.00, 1.30
+    if not games_data:
+        st.warning("No MLB games found for today.")
+    else:
+        df = pd.DataFrame(games_data)
 
-            # Extract probable pitchers
-            for team in teams:
-                athlete = team.get("probablePitcher", {}).get("athlete")
-                stats = team.get("probablePitcher", {}).get("stats", [])
-                if athlete and stats:
-                    stat_line = stats[0]
-                    era_match = re.search(r"ERA:\s*([\d.]+)", stat_line)
-                    whip_match = re.search(r"WHIP:\s*([\d.]+)", stat_line)
-                    if era_match:
-                        era = float(era_match.group(1))
-                    if whip_match:
-                        whip = float(whip_match.group(1))
-                    break  # Use the first valid pitcher
+        # Compute NR2I Score
+        df["NR2I Score"] = df.apply(
+            lambda row: calculate_nr2i_score(
+                pitcher_era=row.get("Pitcher ERA", 4.00),
+                pitcher_whip=row.get("Pitcher WHIP", 1.30),
+                team_2nd_inning_rate=row.get("Team 2nd-Inning Run Rate", 0.35),
+                opponent_2nd_inning_rate=row.get("Opponent 2nd-Inning Allowed Rate", 0.35),
+            ),
+            axis=1
+        )
 
-            matchups.append({
-                "Game": game_title,
-                "Pitcher ERA": era,
-                "Pitcher WHIP": whip,
-                "Team 2nd-Inning Run Rate": 0.35,
-                "Opponent 2nd-Inning Allowed Rate": 0.35
-            })
-        except Exception:
-            continue
+        # Add model outputs
+        df["Model Confidence"] = df["NR2I Score"].apply(
+            lambda score: "High" if score >= 0.80 else "Medium" if score >= 0.72 else "Low"
+        )
+        df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
-    return matchups
+        # Reorder columns for display
+        display_df = df[[
+            "Game", "Pitcher", "Pitcher ERA", "Pitcher WHIP",
+            "Team 2nd-Inning Run Rate", "Opponent 2nd-Inning Allowed Rate",
+            "NR2I Probability", "Model Confidence"
+        ]]
+
+        # Show results
+        st.dataframe(display_df)
+
+except Exception as e:
+    st.error(f"⚠️ Failed to load today's MLB games: {e}")
