@@ -35,4 +35,7 @@ try:
         df["Model Confidence"] = df["NR2I Score"].apply(
             lambda score: "High" if score >= 0.80 else "Medium" if score >= 0.72 else "Low"
         )
-        df["NR2I Probabil]()
+        df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
+
+        # Display final results
+        st.
