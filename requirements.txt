@@ -1,4 +1,4 @@
 streamlit
 pandas
 mlb-statsapi
-echo "beautifulsoup4" >> requirements.txt
+beautifulsoup4 
