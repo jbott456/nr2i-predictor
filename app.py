@@ -12,19 +12,13 @@ st.write("This app predicts MLB games where no runs will be scored in the **2nd 
 st.subheader("📅 Today's Top NR2I Picks")
 
 try:
-    # Pull today's matchups and data
     games_data = fetch_today_games()
-
-    # 🔍 DEBUG: Show raw game data
-    st.subheader("🧪 DEBUG: Raw Game Data")
-    st.write(games_data)
 
     if not games_data:
         st.warning("No MLB games found for today.")
     else:
         df = pd.DataFrame(games_data)
 
-        # Compute NR2I Score
         df["NR2I Score"] = df.apply(
             lambda row: calculate_nr2i_score(
                 pitcher_era=row.get("Pitcher ERA", 4.00),
@@ -35,16 +29,29 @@ try:
             axis=1
         )
 
-        # Add model outputs
         df["Model Confidence"] = df["NR2I Score"].apply(
             lambda score: "High" if score >= 0.80 else "Medium" if score >= 0.72 else "Low"
         )
         df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
-        # Display final results
-        st.subheader("✅ Model Output")
-        st.dataframe(df[["Game", "NR2I Probability", "Model Confidence"]])
+        # Sort by best score
+        df = df.sort_values(by="NR2I Score", ascending=False)
+
+        # Prepare display DataFrame
+        display_df = df[[
+            "Game", "Pitcher", "Pitcher ERA", "Pitcher WHIP",
+            "Team 2nd-Inning Run Rate", "Opponent 2nd-Inning Allowed Rate",
+            "NR2I Probability", "Model Confidence"
+        ]]
+
+        # Apply highlight styling
+        def highlight_row(row):
+            color = "#c6f6d5" if row["Model Confidence"] == "High" else \
+                    "#fefcbf" if row["Model Confidence"] == "Medium" else \
+                    "#bee3f8"
+            return [f"background-color: {color}"] * len(row)
+
+        st.dataframe(display_df.style.apply(highlight_row, axis=1))
 
 except Exception as e:
     st.error(f"⚠️ Failed to load today's MLB games: {e}")
-
