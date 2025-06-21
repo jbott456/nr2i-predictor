@@ -38,4 +38,7 @@ try:
         df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
         # Display final results
-        st.
+        st.dataframe(df[["Game", "NR2I Probability", "Model Confidence"]])
+
+except Exception as e:
+    st.error(f"⚠️ Failed to load today's MLB games: {e}")
