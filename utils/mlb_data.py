@@ -1,39 +1,47 @@
-# utils/mlb_data.py
-
 import requests
-from datetime import date
+import re
 
 def fetch_today_games():
-    today = date.today().strftime("%Y%m%d")
-    url = f"https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates={today}"
+    url = "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
     resp = requests.get(url)
-    
-    if resp.status_code != 200:
-        return []
+    games_json = resp.json()
 
-    data = resp.json()
-    events = data.get("events", [])
-    
-    games = []
-    for event in events:
+    matchups = []
+
+    for event in games_json.get("events", []):
         try:
-            home = event["competitions"][0]["competitors"][0]
-            away = event["competitions"][0]["competitors"][1]
-            
-            home_team = home["team"]["shortDisplayName"]
-            away_team = away["team"]["shortDisplayName"]
-            
-            matchup = f"{away_team} @ {home_team}"
-            
-            games.append({
-                "Game": matchup,
-                # Placeholder pitching/stats values (until we fetch actual starters)
-                "Pitcher ERA": 3.50,
-                "Pitcher WHIP": 1.20,
-                "Team 2nd-Inning Run Rate": 0.40,
-                "Opponent 2nd-Inning Allowed Rate": 0.40
+            competition = event["competitions"][0]
+            teams = competition["competitors"]
+
+            home = next(t for t in teams if t["homeAway"] == "home")["team"]["displayName"]
+            away = next(t for t in teams if t["homeAway"] == "away")["team"]["displayName"]
+            game_title = f"{away} @ {home}"
+
+            # Default values in case no pitcher data found
+            era, whip = 4.00, 1.30
+
+            # Extract probable pitchers
+            for team in teams:
+                athlete = team.get("probablePitcher", {}).get("athlete")
+                stats = team.get("probablePitcher", {}).get("stats", [])
+                if athlete and stats:
+                    stat_line = stats[0]
+                    era_match = re.search(r"ERA:\s*([\d.]+)", stat_line)
+                    whip_match = re.search(r"WHIP:\s*([\d.]+)", stat_line)
+                    if era_match:
+                        era = float(era_match.group(1))
+                    if whip_match:
+                        whip = float(whip_match.group(1))
+                    break  # Use the first valid pitcher
+
+            matchups.append({
+                "Game": game_title,
+                "Pitcher ERA": era,
+                "Pitcher WHIP": whip,
+                "Team 2nd-Inning Run Rate": 0.35,
+                "Opponent 2nd-Inning Allowed Rate": 0.35
             })
-        except Exception as e:
+        except Exception:
             continue
 
-    return games
+    return matchups
