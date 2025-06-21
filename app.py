@@ -15,6 +15,10 @@ try:
     # Pull today's matchups and data
     games_data = fetch_today_games()
 
+    # 🔍 DEBUG: Show raw game data
+    st.subheader("🧪 DEBUG: Raw Game Data")
+    st.write(games_data)
+
     if not games_data:
         st.warning("No MLB games found for today.")
     else:
@@ -38,7 +42,9 @@ try:
         df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
         # Display final results
+        st.subheader("✅ Model Output")
         st.dataframe(df[["Game", "NR2I Probability", "Model Confidence"]])
 
 except Exception as e:
     st.error(f"⚠️ Failed to load today's MLB games: {e}")
+
