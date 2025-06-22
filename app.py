@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 import pandas as pd
 from model import calculate_nr2i_score
@@ -19,7 +17,12 @@ try:
     if not games_data:
         st.warning("No MLB games found for today.")
     else:
+        # Convert games_data into DataFrame
         df = pd.DataFrame(games_data)
+
+        # Debugging: Check the DataFrame structure
+        st.write("DataFrame Columns:", df.columns)
+        st.write("First few rows of the DataFrame:", df.head())
 
         # Compute NR2I Score
         df["NR2I Score"] = df.apply(
@@ -38,13 +41,13 @@ try:
         )
         df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
-        # Reorder columns for display
+        # Reorder columns for display (modify based on actual DataFrame structure)
         display_df = df[[
             "Game", "Away Pitcher", "Home Pitcher", "Away Recent 2nd Inning Rate", 
             "Home Recent 2nd Inning Rate", "Pitcher ERA", "Pitcher WHIP",
             "Team 2nd-Inning Run Rate", "Opponent 2nd-Inning Allowed Rate",
             "NR2I Probability", "Model Confidence"
-        ]]
+        ]] 
 
         # Sort by NR2I Probability and display
         display_df = display_df.sort_values(by="NR2I Probability", ascending=False)
