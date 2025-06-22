@@ -24,7 +24,7 @@ try:
         st.write("DataFrame Columns:", df.columns)
         st.write("First few rows of the DataFrame:", df.head())
 
-        # Compute NR2I Score
+        # Compute NR2I Score (adjust column names based on actual structure)
         df["NR2I Score"] = df.apply(
             lambda row: calculate_nr2i_score(
                 pitcher_era=row.get("Pitcher ERA", 4.00),
@@ -41,7 +41,7 @@ try:
         )
         df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
-        # Reorder columns for display (modify based on actual DataFrame structure)
+        # Reorder columns for display (adjust based on actual DataFrame structure)
         display_df = df[[
             "Game", "Away Pitcher", "Home Pitcher", "Away Recent 2nd Inning Rate", 
             "Home Recent 2nd Inning Rate", "Pitcher ERA", "Pitcher WHIP",
