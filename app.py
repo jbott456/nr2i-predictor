@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from model import calculate_nr2i_score
 from utils.mlb_data import fetch_today_games
-import json
 
 # Page setup
 st.set_page_config(page_title="NR2I Predictor", layout="wide")
@@ -18,16 +17,13 @@ try:
     if not games_data:
         st.warning("No MLB games found for today.")
     else:
-        # Debugging: Check the raw structure of the data
-        st.write("Full raw data structure (first few records):")
-        st.json(games_data[:2])  # Show the first 2 records for a clear view
+        df = pd.DataFrame(games_data)
 
-        # Debugging: Check the DataFrame columns to inspect available keys
-        df = pd.DataFrame(games_data)  # Convert games_data into DataFrame
+        # Debugging: Check the structure of the DataFrame
         st.write("DataFrame Columns:", df.columns)
         st.write("First few rows of the DataFrame:", df.head())
 
-        # Compute NR2I Score (adjust column names based on actual structure)
+        # Compute NR2I Score
         df["NR2I Score"] = df.apply(
             lambda row: calculate_nr2i_score(
                 pitcher_era=row.get("Pitcher ERA", 4.00),
@@ -44,17 +40,16 @@ try:
         )
         df["NR2I Probability"] = df["NR2I Score"].apply(lambda x: f"{round(x * 100)}%")
 
-        # Reorder columns for display (adjust based on actual DataFrame structure)
+        # Reorder columns for display
         display_df = df[[
-            "Game", "Away Pitcher", "Home Pitcher", "Away Recent 2nd Inning Rate", 
-            "Home Recent 2nd Inning Rate", "Pitcher ERA", "Pitcher WHIP",
+            "Game", "Away Pitcher", "Pitcher ERA", "Pitcher WHIP",
             "Team 2nd-Inning Run Rate", "Opponent 2nd-Inning Allowed Rate",
             "NR2I Probability", "Model Confidence"
-        ]] 
+        ]]
 
         # Sort by NR2I Probability and display
         display_df = display_df.sort_values(by="NR2I Probability", ascending=False)
-        
+
         # Highlight rows based on NR2I probability
         def highlight_rows(row):
             if row["NR2I Probability"] > 80:
