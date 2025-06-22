@@ -18,14 +18,12 @@ try:
     if not games_data:
         st.warning("No MLB games found for today.")
     else:
-        # Convert games_data into DataFrame
-        df = pd.DataFrame(games_data)
-
-        # Debugging: Check the entire structure of the data
-        st.write("Full data structure (first few entries):")
+        # Debugging: Check the raw structure of the data
+        st.write("Full raw data structure (first few records):")
         st.json(games_data[:2])  # Show the first 2 records for a clear view
 
         # Debugging: Check the DataFrame columns to inspect available keys
+        df = pd.DataFrame(games_data)  # Convert games_data into DataFrame
         st.write("DataFrame Columns:", df.columns)
         st.write("First few rows of the DataFrame:", df.head())
 
