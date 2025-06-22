@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from model import calculate_nr2i_score
 from utils.mlb_data import fetch_today_games
+import json
 
 # Page setup
 st.set_page_config(page_title="NR2I Predictor", layout="wide")
@@ -20,7 +21,11 @@ try:
         # Convert games_data into DataFrame
         df = pd.DataFrame(games_data)
 
-        # Debugging: Check the DataFrame structure
+        # Debugging: Check the entire structure of the data
+        st.write("Full data structure (first few entries):")
+        st.json(games_data[:2])  # Show the first 2 records for a clear view
+
+        # Debugging: Check the DataFrame columns to inspect available keys
         st.write("DataFrame Columns:", df.columns)
         st.write("First few rows of the DataFrame:", df.head())
 
